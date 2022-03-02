@@ -1,0 +1,14 @@
+#!/bin/bash
+###
+#
+#
+###
+
+source /home/admin-openrc
+openstack image list > /tmp/image_list.h2
+
+## Count total images via 'ID' column
+
+img_total=$(cat /tmp/image_list.h2 | awk  '{ print $2 }' FS="|" | grep -Ev "^ ID|^$" | wc -l)
+echo "Total Images: $img_total."
+exit 0
