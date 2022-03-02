@@ -5,7 +5,7 @@
 
 ### 1. Cinder
 
-- Đầu tiên, check dịch vụ `openstack-cinder-api`
+- Đầu tiên, check dịch vụ `cinder-api`
 	- Nếu DOWN, cảnh báo Cirtical
 	- Nếu chạy, check tiếp các dịch vụ bằng câu lệnh `openstack volume service list`
 		- Kiểm tra lần lượt các dịch vụ DOWN (trên từng node)
@@ -15,14 +15,14 @@
 			
 ### 2. Glance
 
-- Check lần lượt 2 dịch vụ `openstack-glance-api` và `openstack-glance-registry`
+- Check lần lượt 2 dịch vụ `glance-api` và `glance-registry`
 	- Nếu 1 trong 2 dịch vụ DOWN -> Cảnh báo Warning
 	- Cả 2 dịch vụ DOWN -> Cảnh báo Cirtical
 	 
 	
 ### 3. Keystone
 
-- Đầu tiên, check dịch vụ `httpd`
+- Đầu tiên, check dịch vụ `apache2`
 	- Nếu DOWN, cảnh báo Cirtical
 	- Nếu chạy, check tiếp 2 port 5000 và 35357
 		- Nếu chạy, Lấy token
@@ -43,7 +43,7 @@
 			- neutron-openvswitch-agent
 ### 5. Nova
 
-- Đầu tiên, check dịch vụ `openstack-nova-api`
+- Đầu tiên, check dịch vụ `nova-api`
 	- Nếu DOWN, cảnh báo Cirtical
 		- Nếu chạy, check tiếp các dịch vụ bằng câu lệnh `openstack compute service list`
 		- Kiểm tra lần lượt các dịch vụ DOWN (trên từng node)
