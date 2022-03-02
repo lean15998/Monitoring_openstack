@@ -1,23 +1,23 @@
 # Mô hình triển khai
 
                                                          | eth0
-                            +----------------------------+----------------------------+
-                            |                            |                            |
-                            |10.0.0.51                   |10.0.0.52                   |10.0.0.30 
-                +-----------+-----------+    +-----------+-----------+    +-----------+-----------+
-                |        [master]       |    |      [satellite]      |    |      [Openstack]      |
-                |        icinga2        +----+         icinga2       +----+   nagios-nrpe-server  |
-                |        maria-db       |    |                       |    |      Openstack AIO    |
-                |        mailutils      |    |                       |    |                       |    
-                |         ssmtp         |    |                       |    |                       |    
-                |                       |    |                       |    |                       |
-                +-----------+-----------+    +-----------------------+    +-----------------------+
+                            +----------------------------+----------------------------+-----------------------------+
+                            |                            |                            |                             |
+                            |10.0.0.11                   |10.0.0.12                   |10.0.0.30                    |10.0.0.51
+                +-----------+-----------+    +-----------+-----------+    +-----------+-----------+     +-----------+-----------+
+                |        [master]       |    |      [satellite]      |    |      [Controller]     |     |        [Compute]      |
+                |        icinga2        +    +         icinga2       +    +   nagios-nrpe-server  |     |   nagios-nrpe-server  |
+                |        maria-db       |    |                       |    |  Keystone   Nova-api  |     |      Nova-compute     |
+                |        mailutils      |    |                       |    |  Neutron    Placement |     |      Cinder-volume    |
+                |         ssmtp         |    |                       |    |  Glance               |     |                       |
+                |                       |    |                       |    |                       |     |                       |
+                +-----------+-----------+    +-----------------------+    +-----------------------+     +-----------------------+
                        
 ## 1. Thiết lập trên node master 
 
 - Chạy `wizard node`
 ```sh
-root@quynv:~# icinga2 node wizard
+root@master:~# icinga2 node wizard
 Welcome to the Icinga 2 Setup Wizard!
 
 We will guide you through all required configuration details.
@@ -26,10 +26,10 @@ Please specify if this is an agent/satellite setup ('n' installs a master setup)
 
 Starting the Master setup routine...
 
-Please specify the common name (CN) [quynv]:
+Please specify the common name (CN) [master]:
 Reconfiguring Icinga...
-Checking for existing certificates for common name 'quynv'...
-Certificate '/var/lib/icinga2/certs//quynv.crt' for CN 'quynv' already existing.                                                                                                              Skipping certificate generation.
+Checking for existing certificates for common name 'master'...
+Certificate '/var/lib/icinga2/certs//quynv.crt' for CN 'master' already existing.                                                                                                              Skipping certificate generation.
 Generating master configuration for Icinga 2.
 'api' feature already enabled.
 
@@ -52,8 +52,8 @@ Now restart your Icinga 2 daemon to finish the installation!
 
 - Khởi động lại icinga2 và tạo ticket client cho node satellite
 ```sh
-root@quynv:~# systemctl restart icinga2.service
-root@quynv:~# icinga2 pki ticket --cn "satellite"
+root@master:~# systemctl restart icinga2.service
+root@master:~# icinga2 pki ticket --cn "satellite"
 7a6dabea07cd37514ab142ed55030c11a242af9d
 ```
 
@@ -75,18 +75,18 @@ Starting the Agent/Satellite setup routine...
 Please specify the common name (CN) [satellite]:
 
 Please specify the parent endpoint(s) (master or satellite) where this node should connect to:
-Master/Satellite Common Name (CN from your master/satellite node): quynv
+Master/Satellite Common Name (CN from your master/satellite node): master
 
 Do you want to establish a connection to the parent node from this node? [Y/n]: y
 Please specify the master/satellite connection information:
-Master/Satellite endpoint host (IP address or FQDN): 10.0.0.51
+Master/Satellite endpoint host (IP address or FQDN): 10.0.0.11
 Master/Satellite endpoint port [5665]:
 
 Add more master/satellite endpoints? [y/N]: n
 Parent certificate information:
 
  Version:             3
- Subject:             CN = quynv
+ Subject:             CN = master
  Issuer:              CN = Icinga CA
  Valid From:          Feb 17 07:57:36 2022 GMT
  Valid Until:         Feb 13 07:57:36 2037 GMT
@@ -130,19 +130,23 @@ root@satellite:~# systemctl restart icinga2.service
 ```
 
 
-## 3. Thiết lập trên node agent
+## 3. Thiết lập trên 2 node compute và controller
 
-- Tải pulgin monitor openstack
+- Tải pulgin monitor
 
+- Cài đặt nrpe-server
 
+```sh
+root@controller:~# apt-get install nagios-nrpe-server
+```
 
 - Cấu hình nagios nrpe
 
 ```sh
-root@client:~# vim /etc/nagios/nrpe.cfg
+root@controller:~# vim /etc/nagios/nrpe.cfg
 
 /....
-allowed_hosts=127.0.0.1, 10.0.0.51, 10.0.0.52
+allowed_hosts=127.0.0.1, 10.0.0.11, 10.0.0.12
 
 /...
 command[check_users]=/usr/lib/nagios/plugins/check_users -w 5 -c 10
@@ -150,35 +154,28 @@ command[check_load]=/usr/lib/nagios/plugins/check_load -r -w .15,.10,.05 -c .30,
 command[check_hda1]=/usr/lib/nagios/plugins/check_disk -w 20% -c 10% -p /dev/hda1
 command[check_zombie_procs]=/usr/lib/nagios/plugins/check_procs -w 5 -c 10 -s Z
 command[check_total_procs]=/usr/lib/nagios/plugins/check_procs -w 150 -c 200
-command[check_keystone]=/usr/lib/nagios/plugins/check_keystone
-command[check_nova]=/usr/lib/nagios/plugins/check_nova
-command[check_glance]=/usr/lib/nagios/plugins/check_glance
-command[check_cinder]=/usr/lib/nagios/plugins/check_cinder
-command[check_neutron]=/usr/lib/nagios/plugins/check_neutron
-command[check_image]=/usr/lib/nagios/plugins/check_image
-command[check_instance]=/usr/lib/nagios/plugins/check_instance
-command[check_network]=/usr/lib/nagios/plugins/check_network
-command[check_volume]=/usr/lib/nagios/plugins/check_volume
-command[check_mem]=/usr/lib/nagios/plugins/check_mem
+command[check_mem]=/usr/lib/nagios/plugins/check_mem.pl -f -w 20 -c 10
 command[check_cpu]=/usr/lib/nagios/plugins/check_cpu
+command[check_disk]=/usr/lib/nagios/plugins/check_disk -w 20% -c 10% /
 ```
 
 - Khởi động lại dịch vụ
 
 ```sh
-root@client:~# systemctl restart nagios-nrpe-server.service
+root@controller:~# systemctl restart nagios-nrpe-server.service
 ```
 
-## 4. Cấu hình giám sát node agent trên node master
+## 4. Cấu hình giám sát node controller và compute trên node master
+
 - Cài đặt nrpe plugin
 
 ```sh
-root@quynv:~# apt install nagios-nrpe-plugin
+root@master:~# apt install nagios-nrpe-plugin
 ```
 
 - Cấu hình CheckCommand cho `nrpe`
 ```sh
-root@quynv:/etc/icinga2/zones.d/satellite# vim /usr/share/icinga2/include/command-plugins.conf
+root@m:/etc/icinga2/zones.d/satellite# vim /usr/share/icinga2/include/command-plugins.conf
 
 object CheckCommand "nrpe" {
         import "ipv4-or-ipv6"
@@ -266,13 +263,13 @@ object CheckCommand "nrpe" {
 
 
 ```sh
-root@quynv:/etc/icinga2# vim zones.conf
+root@master:/etc/icinga2# vim zones.conf
 
-object Endpoint "quynv" {
+object Endpoint "master" {
 }
 
 object Zone "master" {
-        endpoints = [ "quynv" ]
+        endpoints = [ "master" ]
 }
 
 object Zone "global-templates" {
@@ -290,126 +287,120 @@ object Zone "satellite" {
 
 
 object Endpoint "satellite" {
-  host = "10.0.0.52"
+  host = "10.0.0.12"
   log_duration = 0 // Disable the replay log for command endpoint agents
 }
+
 ```
 
-- Thêm cấu hình zone openstack
+- Thêm cấu hình zone compute và controller
 
 ```sh
-root@quynv:/etc/icinga2/zones.d/satellite# vim agent.conf
+root@master:/etc/icinga2# vim zones.d/satellite/agent.conf 
 
-object Zone "openstack" {
-  endpoints = [ "openstack" ]
+object Zone "compute" {
+  endpoints = [ "compute" ]
   parent = "satellite"
 }
 
-object Endpoint "openstack" {
+object Endpoint "compute" {
+  host = "10.0.0.51"
+  log_duration = 0 // Disable the replay log for command endpoint agents
+}
+
+object Zone "controller" {
+  endpoints = [ "controller" ]
+  parent = "satellite"
+}
+
+object Endpoint "controller" {
   host = "10.0.0.30"
   log_duration = 0 // Disable the replay log for command endpoint agents
 }
 ```
-- Thêm cấu hình host openstack
+- Thêm cấu hình host compute và controller
 
 ```sh
-root@quynv:/etc/icinga2/zones.d/satellite# vim hosts.conf
+root@master:/etc/icinga2# vim zones.d/satellite/hosts.conf
 
-object Host "openstack" {
+object Host "compute" {
+  check_command = "hostalive"
+  address = "10.0.0.51"
+  vars.agent_endpoint = name
+}
+
+object Host "controller" {
   check_command = "hostalive"
   address = "10.0.0.30"
   vars.agent_endpoint = name
 }
+
 ```
 
 - Thêm cấu hình service
 
 ```sh
-
-root@quynv:/etc/icinga2/zones.d/satellite# vim service.conf
+root@master:/etc/icinga2# vim zones.d/satellite/service.conf 
 
 apply Service "ping4" {
   check_command = "ping4"
   assign where host.zone == "satellite" && host.address
 }
 
-apply Service "check-load" {
+apply Service "load" {
   check_command = "nrpe"
   vars.nrpe_command = "check_load"
   assign where host.zone == "satellite" && host.address
 }
 
-apply Service "check-keystone" {
+apply Service "Memory" {
   check_command = "nrpe"
-  vars.nrpe_command = "check_keystone"
+  vars.nrpe_command = "check_mem"
   assign where host.zone == "satellite" && host.address
 }
 
-apply Service "check-nova" {
-  check_command = "nrpe"
-  vars.nrpe_command = "check_nova"
-  assign where host.zone == "satellite" && host.address
-}
-
-apply Service "check-image" {
-  check_command = "nrpe"
-  vars.nrpe_command = "check_image"
-  assign where host.zone == "satellite" && host.address
-}
-
-apply Service "Check-network" {
-  check_command = "nrpe"
-  vars.nrpe_command = "check_network"
-  assign where host.zone == "satellite" && host.address
-}
-
-apply Service "check-instance" {
-  check_command = "nrpe"
-  vars.nrpe_command = "check_instance"
-  assign where host.zone == "satellite" && host.address
-}
-
-apply Service "check-cpu" {
+apply Service "cpu" {
   check_command = "nrpe"
   vars.nrpe_command = "check_cpu"
   assign where host.zone == "satellite" && host.address
 }
-apply Service "check-mem" {
+
+apply Service "Disk" {
   check_command = "nrpe"
-  vars.nrpe_command = "check_mem"
+  vars.nrpe_command = "check_disk"
   assign where host.zone == "satellite" && host.address
 }
 ```
 
 - Kiểm tra cấu hình và khởi động lại icinga2
 ```sh
-root@quynv:/etc/icinga2/zones.d/satellite# icinga2 daemon -C
-root@quynv:/etc/icinga2/zones.d/satellite# icinga2 daemon -C
-[2022-03-02 01:56:16 +0000] information/cli: Icinga application loader (version: r2.13.2-1)
-[2022-03-02 01:56:16 +0000] information/cli: Loading configuration file(s).
-[2022-03-02 01:56:16 +0000] information/ConfigItem: Committing config item(s).
-[2022-03-02 01:56:16 +0000] information/ApiListener: My API identity: quynv
-[2022-03-02 01:56:16 +0000] information/ConfigItem: Instantiated 1 IcingaApplication.
-[2022-03-02 01:56:16 +0000] information/ConfigItem: Instantiated 1 Host.
-[2022-03-02 01:56:16 +0000] information/ConfigItem: Instantiated 1 FileLogger.
-[2022-03-02 01:56:16 +0000] information/ConfigItem: Instantiated 1 CheckerComponent.
-[2022-03-02 01:56:16 +0000] information/ConfigItem: Instantiated 1 ApiListener.
-[2022-03-02 01:56:16 +0000] information/ConfigItem: Instantiated 1 IdoMysqlConnection.
-[2022-03-02 01:56:16 +0000] information/ConfigItem: Instantiated 5 Zones.
-[2022-03-02 01:56:16 +0000] information/ConfigItem: Instantiated 3 Endpoints.
-[2022-03-02 01:56:16 +0000] information/ConfigItem: Instantiated 2 ApiUsers.
-[2022-03-02 01:56:16 +0000] information/ConfigItem: Instantiated 244 CheckCommands.
-[2022-03-02 01:56:16 +0000] information/ConfigItem: Instantiated 1 NotificationComponent.
-[2022-03-02 01:56:16 +0000] information/ConfigItem: Instantiated 9 Services.
-[2022-03-02 01:56:16 +0000] information/ScriptGlobal: Dumping variables to file '/var/cache/icinga2/icinga2.vars'
-[2022-03-02 01:56:16 +0000] information/cli: Finished validating the configuration file(s).
-root@quynv:/etc/icinga2/zones.d/satellite# systemctl restart icinga2.service
+root@master:/etc/icinga2/zones.d/satellite# icinga2 daemon -C
+[2022-03-02 16:47:30 +0700] information/cli: Icinga application loader (version: r2.13.2-1)
+[2022-03-02 16:47:30 +0700] information/cli: Loading configuration file(s).
+[2022-03-02 16:47:30 +0700] information/ConfigItem: Committing config item(s).
+[2022-03-02 16:47:30 +0700] information/ApiListener: My API identity: master
+[2022-03-02 16:47:30 +0700] information/ConfigItem: Instantiated 1 IcingaApplication.
+[2022-03-02 16:47:30 +0700] information/ConfigItem: Instantiated 2 Hosts.
+[2022-03-02 16:47:30 +0700] information/ConfigItem: Instantiated 1 FileLogger.
+[2022-03-02 16:47:30 +0700] information/ConfigItem: Instantiated 1 CheckerComponent.
+[2022-03-02 16:47:30 +0700] information/ConfigItem: Instantiated 1 ApiListener.
+[2022-03-02 16:47:30 +0700] information/ConfigItem: Instantiated 1 IdoMysqlConnection.
+[2022-03-02 16:47:30 +0700] information/ConfigItem: Instantiated 6 Zones.
+[2022-03-02 16:47:30 +0700] information/ConfigItem: Instantiated 4 Endpoints.
+[2022-03-02 16:47:30 +0700] information/ConfigItem: Instantiated 2 ApiUsers.
+[2022-03-02 16:47:30 +0700] information/ConfigItem: Instantiated 244 CheckCommands.
+[2022-03-02 16:47:30 +0700] information/ConfigItem: Instantiated 1 NotificationComponent.
+[2022-03-02 16:47:30 +0700] information/ConfigItem: Instantiated 10 Services.
+[2022-03-02 16:47:30 +0700] information/ScriptGlobal: Dumping variables to file '/var/cache/icinga2/icinga2.vars'
+[2022-03-02 16:47:30 +0700] information/cli: Finished validating the configuration file(s).
+root@master:/etc/icinga2/zones.d/satellite# systemctl restart icinga2
+
 ```
 
 - Trên dashboard
 
-<img src="https://github.com/lean15998/Monitoring_openstack/blob/main/image/01.PNG">
 
-
+<img src="https://github.com/lean15998/Monitoring_openstack/blob/main/image/002.png">
+<img src="https://github.com/lean15998/Monitoring_openstack/blob/main/image/003.png">
 
 
