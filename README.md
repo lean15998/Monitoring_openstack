@@ -709,11 +709,11 @@ Rules updated (v6)
 
 #### Truy cập vào dashboard `http://10.0.0.20:3000`
 
-<img src="https://github.com/lean15998/TIG-Stack/blob/main/image/01.png">
+<img src="https://github.com/lean15998/Monitoring_openstack/blob/main/image/008.png">
 
 #### Thêm fluxdb làm nguồn dữ liệu cho grafana
 
-<img src="https://github.com/lean15998/TIG-Stack/blob/main/image/02.png">
+<img src="https://github.com/lean15998/Monitoring_openstack/blob/main/image/009.png">
   
 
 ### Import dashboard
@@ -721,5 +721,10 @@ Rules updated (v6)
  <img src="https://github.com/lean15998/TIG-Stack/blob/main/image/97.PNG">
 - Chọn thư mục và Nguồn dữ liêu
  <img src="https://github.com/lean15998/TIG-Stack/blob/main/image/96.PNG">
+ 
+- Edit panel và và chỉnh sửa các query
+
+<img src="https://github.com/lean15998/Monitoring_openstack/blob/main/image/01.png">
+
 - Kết quả
- <img src="https://github.com/lean15998/TIG-Stack/blob/main/image/98.PNG">
+<img src="https://github.com/lean15998/Monitoring_openstack/blob/main/image/011.png">
