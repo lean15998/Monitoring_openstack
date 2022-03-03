@@ -476,7 +476,7 @@ object Host "controller" {
 root@master:/etc/icinga2/zones.d/satellite# vim notifications.conf
 apply Notification "mail-Admin" to Host {
   command = "mail-host-notification"
-  users = host.vars.notification.mail.users
+  users = ["Admin"]
   states = [ Up, Down ]
   types = [ Problem, Acknowledgement, Recovery, Custom ]
   interval = 0
@@ -486,7 +486,7 @@ apply Notification "mail-Admin" to Host {
 
 apply Notification "mail-Admin" to Service {
   command = "mail-service-notification"
-  users = host.vars.notification.mail.users
+  users = ["Admin"]
   interval = 0
   period = "24x7"
   states = [ OK, Warning, Critical, Unknown ]
