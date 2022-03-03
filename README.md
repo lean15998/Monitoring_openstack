@@ -530,10 +530,10 @@ root@master:/etc/icinga2/zones.d/satellite# systemctl restart icinga2.service
 
 - Trên dashboard
 
-<img src = "https://github.com/lean15998/Icinga/blob/main/image/005.png" >
+<img src = "https://github.com/lean15998/Monitoring_openstack/blob/main/image/005.png" >
 
 - Check mail cảnh báo
 
-<img src = "https://github.com/lean15998/Icinga/blob/main/image/006.png">
+<img src = "https://github.com/lean15998/Monitoring_openstack/blob/main/image/006.png">
 
-<img src = "https://github.com/lean15998/Icinga/blob/main/image/007.png">
+<img src = "https://github.com/lean15998/Monitoring_openstack/blob/main/image/007.png">
