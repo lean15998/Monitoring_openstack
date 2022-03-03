@@ -404,3 +404,136 @@ root@master:/etc/icinga2/zones.d/satellite# systemctl restart icinga2
 <img src="https://github.com/lean15998/Monitoring_openstack/blob/main/image/003.png">
 
 
+
+# 5. Cảnh báo
+
+- Mở tính năng `notification`
+
+```sh
+root@master:~# icinga2 feature list
+Disabled features: command compatlog debuglog elasticsearch gelf graphite icingadb influxdb influxdb2 livestatus opentsdb perfdata statusdata syslog
+Enabled features: api checker ido-mysql mainlog notification
+```
+
+- Cài đặt mailutils và sSMTP (Trình gửi mail)
+
+```sh
+root@quynv:~# apt install -y mailutils ssmtp
+```
+
+- Cấu hình ssmtp
+
+```sh
+root@master:~# vim /etc/ssmtp/ssmtp.conf
+root=quy15091998@gmail.com
+
+mailhub=smtp.gmail.com:587
+UseSTARTTLS=YES
+AuthUser=quy15091998@gmail.com
+AuthPass=Abc123456789
+rewriteDomain=gmail.com
+hostname=quynv
+FromLineOverride=YES
+```
+
+- Cấu hình gửi cảnh báo cho người dùng `Admin`
+
+```sh
+root@master:~# cd /etc/icinga2/zones.d/satellite/
+root@master:/etc/icinga2/zones.d/satellite# vim user.conf
+
+object User "Admin" {
+
+display_name = "Admin"
+email = "quy15091998@gmail.com"
+enable_notifications = true
+}
+```
+
+- Cấu hình cảnh báo cho host `controller` và ``compute`
+
+```sh
+root@master:/etc/icinga2/zones.d/satellite# vim hosts.conf
+object Host "compute" {
+  check_command = "hostalive"
+  address = "10.0.0.51"
+  vars.agent_endpoint = name
+  vars.notification["mail"] = { users = [ "Admin" ] }
+  enable_notifications = true
+}
+
+object Host "controller" {
+  check_command = "hostalive"
+  address = "10.0.0.30"
+  vars.agent_endpoint = name
+  vars.notification["mail"] = { users = [ "Admin" ] }
+ enable_notifications = true
+}
+```
+- Cấu hình cảnh báo
+
+```sh
+root@master:/etc/icinga2/zones.d/satellite# vim notifications.conf
+apply Notification "mail-Admin" to Host {
+  command = "mail-host-notification"
+  users = host.vars.notification.mail.users
+  states = [ Up, Down ]
+  types = [ Problem, Acknowledgement, Recovery, Custom ]
+  interval = 0
+  period = "24x7"
+  assign where host.vars.notification.mail
+}
+
+apply Notification "mail-Admin" to Service {
+  command = "mail-service-notification"
+  users = host.vars.notification.mail.users
+  interval = 0
+  period = "24x7"
+  states = [ OK, Warning, Critical, Unknown ]
+  types = [ Problem, Acknowledgement, Recovery ]
+  assign where host.vars.notification.mail
+  period = "24x7"
+}
+```
+
+- Kiểm tra cấu hình và khởi động lại dịch vụ
+
+```sh
+root@master:/etc/icinga2/zones.d/satellite# icinga2 daemon -C
+[2022-03-03 10:44:29 +0700] information/cli: Icinga application loader (version: r2.13.2-1)
+[2022-03-03 10:44:29 +0700] information/cli: Loading configuration file(s).
+[2022-03-03 10:44:29 +0700] information/ConfigItem: Committing config item(s).
+[2022-03-03 10:44:29 +0700] information/ApiListener: My API identity: master
+[2022-03-03 10:44:30 +0700] information/ConfigItem: Instantiated 12 Notifications.
+[2022-03-03 10:44:30 +0700] information/ConfigItem: Instantiated 1 IcingaApplication.
+[2022-03-03 10:44:30 +0700] information/ConfigItem: Instantiated 2 Hosts.
+[2022-03-03 10:44:30 +0700] information/ConfigItem: Instantiated 1 FileLogger.
+[2022-03-03 10:44:30 +0700] information/ConfigItem: Instantiated 2 NotificationCommands.
+[2022-03-03 10:44:30 +0700] information/ConfigItem: Instantiated 1 CheckerComponent.
+[2022-03-03 10:44:30 +0700] information/ConfigItem: Instantiated 1 ApiListener.
+[2022-03-03 10:44:30 +0700] information/ConfigItem: Instantiated 1 IdoMysqlConnection.
+[2022-03-03 10:44:30 +0700] information/ConfigItem: Instantiated 6 Zones.
+[2022-03-03 10:44:30 +0700] information/ConfigItem: Instantiated 4 Endpoints.
+[2022-03-03 10:44:30 +0700] information/ConfigItem: Instantiated 2 ApiUsers.
+[2022-03-03 10:44:30 +0700] information/ConfigItem: Instantiated 244 CheckCommands.
+[2022-03-03 10:44:30 +0700] information/ConfigItem: Instantiated 1 NotificationComponent.
+[2022-03-03 10:44:30 +0700] information/ConfigItem: Instantiated 1 User.
+[2022-03-03 10:44:30 +0700] information/ConfigItem: Instantiated 3 TimePeriods.
+[2022-03-03 10:44:30 +0700] information/ConfigItem: Instantiated 10 Services.
+[2022-03-03 10:44:30 +0700] information/ScriptGlobal: Dumping variables to file '/var/cache/icinga2/icinga2.vars'
+[2022-03-03 10:44:30 +0700] information/cli: Finished validating the configuration file(s).
+
+
+root@master:/etc/icinga2/zones.d/satellite# systemctl restart icinga2.service
+```
+
+
+- Trên dashboard
+
+<img src = "https://github.com/lean15998/Icinga/blob/main/image/005.png" >
+
+- Check mail cảnh báo
+
+<img src = "https://github.com/lean15998/Icinga/blob/main/image/006.png">
+
+<img src = "https://github.com/lean15998/Icinga/blob/main/image/007.png">
