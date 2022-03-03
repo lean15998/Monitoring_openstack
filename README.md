@@ -728,3 +728,9 @@ Rules updated (v6)
 
 - Kết quả
 <img src="https://github.com/lean15998/Monitoring_openstack/blob/main/image/011.png">
+
+- Khởi động 1 VM trên node Compute
+<img src="https://github.com/lean15998/Monitoring_openstack/blob/main/image/012.png">
+
+-> Mức sử dụng CPU và RAM tăng cao sau khi khởi động VM, ta quan sát và đặt ngưỡng cảnh báo phù hợp.
+
