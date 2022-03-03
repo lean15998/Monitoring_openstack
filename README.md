@@ -724,7 +724,7 @@ Rules updated (v6)
  
 - Edit panel và và chỉnh sửa các query
 
-<img src="https://github.com/lean15998/Monitoring_openstack/blob/main/image/01.png">
+<img src="https://github.com/lean15998/Monitoring_openstack/blob/main/image/010.png">
 
 - Kết quả
 <img src="https://github.com/lean15998/Monitoring_openstack/blob/main/image/011.png">
