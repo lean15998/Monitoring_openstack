@@ -1,6 +1,20 @@
 # Mô hình triển khai
 
-                                                         | eth0
+
+
+
+
+                                             +-----------+-----------+
+                                             |          [TIG]        |
+                                             |         InfluxDB      |
+                                             |         Grafana       | 
+                                             |                       |
+                                             |                       | 
+                                             |                       |
+                                             +-----------+-----------+    
+                                                         |
+                                                         |
+                                               10.0.0.20 | eth0
                             +----------------------------+----------------------------+-----------------------------+
                             |                            |                            |                             |
                             |10.0.0.11                   |10.0.0.12                   |10.0.0.30                    |10.0.0.51
@@ -9,10 +23,12 @@
                 |        icinga2        +    +         icinga2       +    +   nagios-nrpe-server  |     |   nagios-nrpe-server  |
                 |        maria-db       |    |                       |    |  Keystone   Nova-api  |     |      Nova-compute     |
                 |        mailutils      |    |                       |    |  Neutron    Placement |     |      Cinder-volume    |
-                |         ssmtp         |    |                       |    |  Glance               |     |                       |
+                |         ssmtp         |    |                       |    |  Glance     Telegraf  |     |        Telegraf       |
                 |                       |    |                       |    |                       |     |                       |
                 +-----------+-----------+    +-----------------------+    +-----------------------+     +-----------------------+
                        
+# Tri
+
 ## 1. Thiết lập trên node master 
 
 - Chạy `wizard node`
@@ -537,3 +553,173 @@ root@master:/etc/icinga2/zones.d/satellite# systemctl restart icinga2.service
 <img src = "https://github.com/lean15998/Monitoring_openstack/blob/main/image/006.png">
 
 <img src = "https://github.com/lean15998/Monitoring_openstack/blob/main/image/007.png">
+
+
+# Triển khai TIG stack
+
+
+### Cài đặt influxdb (Trên node TIG)
+
+- Add repo influxdata
+
+```sh
+root@quynv:~# wget -qO- https://repos.influxdata.com/influxdb.key | apt-key add -
+OK
+root@quynv:~# source /etc/lsb-release
+root@quynv:~# echo "deb https://repos.influxdata.com/${DISTRIB_ID,,} ${DISTRIB_CODENAME} stable" | tee /etc/apt/sources.list.d/influxdb.list
+deb https://repos.influxdata.com/ubuntu focal stable
+root@quynv:~# apt update 
+```
+
+- Cài đặt influxdb
+
+```sh
+root@quynv:~# apt install influxdb -y
+```
+
+- Khởi động dịch vụ và cấu hình khởi động cùng hệ thống:
+
+
+```sh
+root@quynv:~# systemctl start influxdb
+root@quynv:~# systemctl enable influxdb
+```
+
+- Mở port cho influxdb
+
+```sh
+root@quynv:~# ufw allow 8086
+Rules updated
+Rules updated (v6)
+root@quynv:~# ufw allow 8088
+Rules updated
+Rules updated (v6)
+```
+
+- Cấu hình influxdb
+
+```sh
+root@quynv:~# vi /etc/influxdb/influxdb.conf
+
+[http]
+# Determines whether HTTP endpoint is enabled.
+enabled = true
+
+# Determines whether the Flux query endpoint is enabled.
+flux-enabled = true
+
+# The bind address used by the HTTP service.
+bind-address = ":8086"
+
+# Determines whether HTTP request logging is enabled.
+log-enabled = true
+```
+
+- Tạo user chứng thực
+
+```sh
+root@quynv:~# influx
+Connected to http://localhost:8086 version 1.8.10
+InfluxDB shell version: 1.8.10
+> create database telegraf
+> create user telegraf with password 'lean15998' with all privileges
+> exit
+```
+
+### Cài đặt telegaf (Trên node `compute` và `controller`)
+
+
+- Add repo influxdata
+
+```sh
+root@compute:~# wget -qO- https://repos.influxdata.com/influxdb.key | apt-key add -
+OK
+root@compute:~# source /etc/lsb-release
+root@compute:~# echo "deb https://repos.influxdata.com/${DISTRIB_ID,,} ${DISTRIB_CODENAME} stable" | tee /etc/apt/sources.list.d/influxdb.list
+deb https://repos.influxdata.com/ubuntu focal stable
+root@compute:~# apt update 
+```
+
+- Cài đặt influxdb
+
+```sh
+root@compute:~# apt install influxdb-client -y
+```
+
+- Cài đặt telegraf
+
+```sh
+root@compute:~# wget https://dl.influxdata.com/telegraf/releases/telegraf_1.21.4-1_amd64.deb
+root@compute:~# dpkg -i telegraf_1.21.4-1_amd64.deb
+```
+- Khởi động dịch vụ và cấu hình khởi động cùng hệ thống
+
+```sh
+root@compute:~# systemctl start telegraf
+root@compute:~# systemctl enable telegraf
+```
+
+
+- Cấu hình telegraf
+
+```sh
+root@compute:~# vim /etc/telegraf/telegraf.conf
+
+hostname = "agent"
+[[outputs.influxdb]]     //output data
+urls = ["http://10.0.0.20:8086"]
+database = "telegraf"
+username = "telegraf"
+password = "lean15998"
+
+[[inputs.cpu]]  //input data
+  percpu = true
+  totalcpu = true
+  collect_cpu_time = false
+  report_active = yes
+```
+
+### Cài đặt grafana (Trên node TIG)
+
+- Add repo và cài đặt grafana
+
+```sh
+root@quynv:~# wget -q -O - https://packages.grafana.com/gpg.key | apt-key add -
+OK
+root@quynv:~# add-apt-repository "deb https://packages.grafana.com/oss/deb stable main"
+root@quynv:~# apt-get install -y grafana
+```
+  
+- Khởi động dịch vụ và cấu hình khởi động cùng hệ thống  
+  
+```sh
+root@quynv:~# systemctl start grafana-server
+root@quynv:~# systemctl enable grafana-server
+```
+  
+- Mở port cho grafana
+
+```sh
+root@quynv:~# ufw allow 3000
+Rules updated
+Rules updated (v6)
+```
+
+### Sử dụng Grafana Dashboard
+
+#### Truy cập vào dashboard `http://10.0.0.20:3000`
+
+<img src="https://github.com/lean15998/TIG-Stack/blob/main/image/01.png">
+
+#### Thêm fluxdb làm nguồn dữ liệu cho grafana
+
+<img src="https://github.com/lean15998/TIG-Stack/blob/main/image/02.png">
+  
+
+### Import dashboard
+- Import Dashboard số 1902
+ <img src="https://github.com/lean15998/TIG-Stack/blob/main/image/97.PNG">
+- Chọn thư mục và Nguồn dữ liêu
+ <img src="https://github.com/lean15998/TIG-Stack/blob/main/image/96.PNG">
+- Kết quả
+ <img src="https://github.com/lean15998/TIG-Stack/blob/main/image/98.PNG">
