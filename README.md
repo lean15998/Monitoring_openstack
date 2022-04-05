@@ -496,7 +496,6 @@ apply Notification "mail-Admin" to Host {
   states = [ Up, Down ]
   types = [ Problem, Acknowledgement, Recovery, Custom ]
   interval = 0
-  period = "24x7"
   assign where host.vars.notification.mail
 }
 
@@ -504,11 +503,9 @@ apply Notification "mail-Admin" to Service {
   command = "mail-service-notification"
   users = ["Admin"]
   interval = 0
-  period = "24x7"
   states = [ OK, Warning, Critical, Unknown ]
   types = [ Problem, Acknowledgement, Recovery ]
   assign where host.vars.notification.mail
-  period = "24x7"
 }
 ```
 
