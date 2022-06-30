@@ -24,10 +24,12 @@ Phân tích Registry
 volatility -f THUTRANG-20220630-073335.raw --profile WinXPSP2x86 handles -p 1176 -t key
 volatility -f THUTRANG-20220630-073335.raw --profile WinXPSP2x86 handles -p 1984 -t key
 volatility -f THUTRANG-20220630-073335.raw --profile WinXPSP2x86 handles -p 1944 -t key
+volatility -f THUTRANG-20220630-073335.raw --profile WinXPSP2x86 printkey -K "Microsoft\Windows\CurrentVersion\Run"
+volatility -f THUTRANG-20220630-073335.raw --profile WinXPSP2x86 filescan | grep -i "\Desktop"
 volatility -f THUTRANG-20220630-073335.raw --profile WinXPSP2x86 handles -p 1176 -t Mutant
 volatility -f THUTRANG-20220630-073335.raw --profile WinXPSP2x86 handles -p 1984 -t Mutant
 volatility -f THUTRANG-20220630-073335.raw --profile WinXPSP2x86 handles -p 1944 -t Mutant
-volatility -f THUTRANG-20220630-073335.raw --profile WinXPSP2x86 handles -p 1176 -t file
+volatility -f THUTRANG-20220630-073335.raw --profile WinXPSP2x86 filescan | grep -i "\Desktop"
 volatility -f THUTRANG-20220630-073335.raw --profile WinXPSP2x86 handles -p 1984 -t file
 volatility -f THUTRANG-20220630-073335.raw --profile WinXPSP2x86 handles -p 1944 -t file
 volatility -f THUTRANG-20220630-073335.raw --profile WinXPSP2x86 filescan | grep -i "\Desktop"
@@ -37,9 +39,9 @@ strings 1984.dmp
 strings 1944.dmp
 DÒng thời gian
 
-volatility -f THUTRANG-20220627-160239.raw  --profile WinXPSP2x86 timeliner --output-file=timeline.txt --output=body  
-volatility -f THUTRANG-20220627-160239.raw  --profile WinXPSP2x86 mftparser --output-file=mftparser.txt --output=body
-volatility -f THUTRANG-20220627-160239.raw --profile WinXPSP2x86 shellbags --output-file=shellbags.txt --output=body
+volatility -f THUTRANG-20220630-073335.raw  --profile WinXPSP2x86 timeliner --output-file=timeline.txt --output=body  
+volatility -f THUTRANG-20220630-073335.raw  --profile WinXPSP2x86 mftparser --output-file=mftparser.txt --output=body
+volatility -f THUTRANG-20220630-073335.raw --profile WinXPSP2x86 shellbags --output-file=shellbags.txt --output=body
 cat timeline.txt >> largetimeliner.txt
 cat mftparser.txt >> largetimeliner.txt
 cat shellbags.txt >> largetimeliner.txt
